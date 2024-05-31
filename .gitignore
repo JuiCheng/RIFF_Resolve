@@ -1,0 +1,14 @@
+# .NET Core
+*.obj
+*.bin
+*.dll
+*.exe
+*.pdb
+*.user
+*.suo
+*.cache
+*.log
+bin/*
+obj/*
+Migrations/*
+.fake
