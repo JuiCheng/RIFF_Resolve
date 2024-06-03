@@ -98,7 +98,7 @@ string filePath = "RIFF-WAVE IQ/iq_v2_1.wav";
     }
     Console.WriteLine("\n\nPress any key to close.");
     // 等待用戶輸入任意鍵
-    Console.ReadKey();
+     Console.ReadKey();
 //} while (true) ;
 
 void Init(string InFolderPath)
@@ -312,22 +312,22 @@ void IRIS(BinaryReader reader, string riff_Type, int length){
             Console.WriteLine($"Booking Time (UNIX): {Task_General_Booking_Time_int}");
 
             int Task_General_NS = (int)IRISData[10];
-            Console.WriteLine($"NS: {Task_General_NS}");
-            switch (Task_General_NS)
-            {
-                case 0:
-                    Console.WriteLine($"NS: {Task_General_NS}->5s");
-                    break;
-                case 1:
-                    Console.WriteLine($"Task General Task Name: {Task_General_NS}->10s");
-                    break;
-                case 2:
-                    Console.WriteLine($"Task General Task Name: {Task_General_NS}->20s");
-                    break;
-                case 3:
-                    Console.WriteLine($"Task General Task Name: {Task_General_NS}->40s");
-                    break;
-            }
+            Console.WriteLine($"NS: {Task_General_NS}s");
+            // switch (Task_General_NS)
+            // {
+            //     case 0:
+            //         Console.WriteLine($"NS: {Task_General_NS}->5s");
+            //         break;
+            //     case 1:
+            //         Console.WriteLine($"Task General Task Name: {Task_General_NS}->10s");
+            //         break;
+            //     case 2:
+            //         Console.WriteLine($"Task General Task Name: {Task_General_NS}->20s");
+            //         break;
+            //     case 3:
+            //         Console.WriteLine($"Task General Task Name: {Task_General_NS}->40s");
+            //         break;
+            // }
             // 11,12,13,14
             int AD9361_antenna_source = (int)IRISData[15];
             Console.WriteLine($"AD9361 antenna source: {AD9361_antenna_source}");
@@ -338,12 +338,12 @@ void IRIS(BinaryReader reader, string riff_Type, int length){
             Console.WriteLine($"rx_rf_gain: {rx_rf_gain}");
 
             byte[] rx_rf_bandwidth_Byte = new byte[4];
-            Array.Copy(IRISData, 20, rx_rf_gain_Byte, 0, 4); // 20,21,22,23
+            Array.Copy(IRISData, 20, rx_rf_bandwidth_Byte, 0, 4); // 20,21,22,23
             int rx_rf_bandwidth = BitConverter.ToInt32(rx_rf_bandwidth_Byte, 0);// 將 byte[] 轉換為整數
             Console.WriteLine($"rx_rf_bandwidth: {rx_rf_bandwidth}");
 
             byte[] rx_sampling_freq_Byte = new byte[4];
-            Array.Copy(IRISData, 24, rx_rf_gain_Byte, 0, 4); // 24,25,26,27
+            Array.Copy(IRISData, 24, rx_sampling_freq_Byte, 0, 4); // 24,25,26,27
             int rx_sampling_freq = BitConverter.ToInt32(rx_sampling_freq_Byte, 0);// 將 byte[] 轉換為整數
             Console.WriteLine($"rx_sampling_freq: {rx_sampling_freq}");
 
@@ -548,6 +548,28 @@ void data(BinaryReader reader, string riff_Type, int length){
     switch (riff_Type)
     {
         case "AIS ":
+            for(int i = 0; i < length;i=i+16){
+                byte[] type_Byte = new byte[4];
+                Array.Copy(dataData, 0, type_Byte, 0, 4); // 0,1,2,3
+                int type = BitConverter.ToInt32(type_Byte, 0);// 將 byte[] 轉換為整數
+                Console.WriteLine($"type: {type}");
+
+                byte[] mmsi_Byte = new byte[4];
+                Array.Copy(dataData, 4, mmsi_Byte, 0, 4); // 4,5,6,7
+                int mmsi = BitConverter.ToInt32(mmsi_Byte, 0);// 將 byte[] 轉換為整數
+                Console.WriteLine($"mmsi: {mmsi}");
+
+                byte[] lon_Byte = new byte[4];
+                Array.Copy(dataData, 8, lon_Byte, 0, 4); // 8,9,10,11
+                double lon = BitConverter.ToInt32(lon_Byte, 0)/600000.0;// 將 byte[] 轉換為整數
+                Console.WriteLine($"lon: {lon}");
+
+                byte[] lat_Byte = new byte[4];
+                Array.Copy(dataData, 12, lat_Byte, 0, 4); // 12,13,14,15
+                double lat = BitConverter.ToInt32(lat_Byte, 0)/600000.0;// 將 byte[] 轉換為整數
+                Console.WriteLine($"lat: {lat}");
+            }
+            
             break;
         case "WAVE":
             Console.WriteLine("數據包內容（十六進制）：");
