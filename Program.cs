@@ -3,10 +3,11 @@
 using System.Text;
 ///初始化設定------------------------------------------------------------------------////
 string InFolderPath = $"./Import"; // 指定要搜索的資料夾路徑
+int TaskNameIndex=0;
 //string filePath = "RIFF-WAVE Audio/sound.wav";
 //string filePath = "RIFF-AIS/ais_v2_2.ais";
 //string filePath = "RIFF-WAVE Audio/audio7.wav";
-string filePath = "RIFF-WAVE IQ/iq_v2_1.wav";
+//string filePath = "RIFF-WAVE IQ/iq_v2_1.wav";
 //string filePath = "RIFF-AIS/ais_v2_1.ais";
 //do{
     try
@@ -72,13 +73,22 @@ string filePath = "RIFF-WAVE IQ/iq_v2_1.wav";
             Console.WriteLine($"Chunk ID : {Chunk_ID_RIFF}");
             Console.WriteLine($"Chunk Size : {Chunk_Size}");
             string riff_Type = RIFF(reader,4);
-            while (currentPosition < totalLength)
-            {
-                
-                SwitchChunk(reader, riff_Type, 4); // fmt->IRIS->aux2->data
+            SwitchChunk(reader, riff_Type, 4); // fmt->IRIS->aux2->data
+            currentPosition = fs.Position;
+
+            SwitchChunk(reader, riff_Type, 4); // fmt->IRIS->aux2->data
                 currentPosition = fs.Position;
-                // Console.WriteLine($"currentPosition: {currentPosition}");
-            }
+            SwitchChunk(reader, riff_Type, 4); // fmt->IRIS->aux2->data
+                currentPosition = fs.Position;
+            SwitchChunk(reader, riff_Type, 4); // fmt->IRIS->aux2->data
+                currentPosition = fs.Position;
+            Console.WriteLine($"fileSize: {totalLength}, currentPosition: {currentPosition}");
+            // while (currentPosition < totalLength)
+            // {             
+            //     SwitchChunk(reader, riff_Type, 4); // fmt->IRIS->aux2->data
+            //     currentPosition = fs.Position;
+            //     // Console.WriteLine($"currentPosition: {currentPosition}");
+            // }
             // 读取剩余的数据包内容
             // byte[] packetData = reader.ReadBytes((int)fileSize); // 减去头部和整数所占的字节数
 
@@ -98,7 +108,7 @@ string filePath = "RIFF-WAVE IQ/iq_v2_1.wav";
     }
     Console.WriteLine("\n\nPress any key to close.");
     // 等待用戶輸入任意鍵
-     Console.ReadKey();
+     Console.ReadLine();
 //} while (true) ;
 
 void Init(string InFolderPath)
@@ -189,7 +199,7 @@ void fmt(BinaryReader reader, string riff_Type, int length)
             short Bits_Per_Sample = BitConverter.ToInt16(Bits_Per_Sample_Byte, 0);// 將 byte[] 轉換為整數
             Console.WriteLine($"Bits Per Sample: {Block_Alignment}");
             break;
-        case "SDR":
+        case "SDR ":
             int SD_Format_Version = (int)fmtData[0]; // 0
             Console.WriteLine($"SD Format Version: {SD_Format_Version}");
 
@@ -244,7 +254,7 @@ void IRIS(BinaryReader reader, string riff_Type, int length){
     {
         case "AIS ":
         case "WAVE":
-        case "SDR":
+        case "SDR ":
         case "ADSB":
             int Task_General_Satellite_ID = (int)IRISData[0];
             switch (Task_General_Satellite_ID)
@@ -264,6 +274,7 @@ void IRIS(BinaryReader reader, string riff_Type, int length){
             }
 
             int Task_General_Task_Name = (int)IRISData[1];
+            TaskNameIndex=Task_General_Task_Name;
             switch (Task_General_Task_Name)
             {
                 case 0:
@@ -548,28 +559,7 @@ void data(BinaryReader reader, string riff_Type, int length){
     switch (riff_Type)
     {
         case "AIS ":
-            for(int i = 0; i < length;i=i+16){
-                byte[] type_Byte = new byte[4];
-                Array.Copy(dataData, 0, type_Byte, 0, 4); // 0,1,2,3
-                int type = BitConverter.ToInt32(type_Byte, 0);// 將 byte[] 轉換為整數
-                Console.WriteLine($"type: {type}");
-
-                byte[] mmsi_Byte = new byte[4];
-                Array.Copy(dataData, 4, mmsi_Byte, 0, 4); // 4,5,6,7
-                int mmsi = BitConverter.ToInt32(mmsi_Byte, 0);// 將 byte[] 轉換為整數
-                Console.WriteLine($"mmsi: {mmsi}");
-
-                byte[] lon_Byte = new byte[4];
-                Array.Copy(dataData, 8, lon_Byte, 0, 4); // 8,9,10,11
-                double lon = BitConverter.ToInt32(lon_Byte, 0)/600000.0;// 將 byte[] 轉換為整數
-                Console.WriteLine($"lon: {lon}");
-
-                byte[] lat_Byte = new byte[4];
-                Array.Copy(dataData, 12, lat_Byte, 0, 4); // 12,13,14,15
-                double lat = BitConverter.ToInt32(lat_Byte, 0)/600000.0;// 將 byte[] 轉換為整數
-                Console.WriteLine($"lat: {lat}");
-            }
-            
+            AIS(dataData,length);
             break;
         case "WAVE":
             Console.WriteLine("數據包內容（十六進制）：");
@@ -578,10 +568,61 @@ void data(BinaryReader reader, string riff_Type, int length){
             //     Console.Write($"{b:X2} ");
             // }
             break;
-        case "SDR":
+        case "SDR ":
+            // switch(TaskNameIndex){
+            //     case 1:
+            //         SignalDetection(dataData,length);
+            //     break;
+            //     case 5:
+            //         RFScanning(dataData,length);
+            //     break;
+            // }
             break;
         case "ADSB":
             break;
     }
 }
+void AIS(byte[] dataData,int length){
 
+    for(int i = 0; i < length;i=i+16){
+        byte[] type_Byte = new byte[4];
+        Array.Copy(dataData, 0, type_Byte, 0, 4); // 0,1,2,3
+        int type = BitConverter.ToInt32(type_Byte, 0);// 將 byte[] 轉換為整數
+        Console.WriteLine($"type: {type}");
+
+        byte[] mmsi_Byte = new byte[4];
+        Array.Copy(dataData, 4, mmsi_Byte, 0, 4); // 4,5,6,7
+        int mmsi = BitConverter.ToInt32(mmsi_Byte, 0);// 將 byte[] 轉換為整數
+        Console.WriteLine($"mmsi: {mmsi}");
+
+        byte[] lon_Byte = new byte[4];
+        Array.Copy(dataData, 8, lon_Byte, 0, 4); // 8,9,10,11
+        double lon = BitConverter.ToInt32(lon_Byte, 0)/600000.0;// 將 byte[] 轉換為整數
+        Console.WriteLine($"lon: {lon}");
+
+        byte[] lat_Byte = new byte[4];
+        Array.Copy(dataData, 12, lat_Byte, 0, 4); // 12,13,14,15
+        double lat = BitConverter.ToInt32(lat_Byte, 0)/600000.0;// 將 byte[] 轉換為整數
+        Console.WriteLine($"lat: {lat}\n");
+    }
+}
+
+void SignalDetection(byte[] dataData,int length){ // 定頻
+    for(int i = 0; i < length;i=i+16){
+        byte[] type_Byte = new byte[4];
+        Array.Copy(dataData, 0, type_Byte, 0, 4); // 0,1,2,3
+        int LO = BitConverter.ToInt32(type_Byte, 0);// 將 byte[] 轉換為整數
+        Console.WriteLine($"LO: {LO}");
+    }
+}
+void RFScanning(byte[] dataData,int length){ // 寬頻
+    for(int i = 0; i < length;i=i+528448){
+        // byte[] CheckValue = new byte[4];
+        // Array.Copy(dataData, i, CheckValue, 0, 4);
+        // if()
+        byte[] type_Byte = new byte[4];
+        Array.Copy(dataData, 0, type_Byte, 0, 4); // 0,1,2,3
+        int LO = BitConverter.ToInt32(type_Byte, 0);// 將 byte[] 轉換為整數
+        Console.WriteLine($"LO: {LO}");
+    }
+}
