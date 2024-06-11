@@ -76,19 +76,20 @@ int TaskNameIndex=0;
             SwitchChunk(reader, riff_Type, 4); // fmt->IRIS->aux2->data
             currentPosition = fs.Position;
 
-            SwitchChunk(reader, riff_Type, 4); // fmt->IRIS->aux2->data
-                currentPosition = fs.Position;
-            SwitchChunk(reader, riff_Type, 4); // fmt->IRIS->aux2->data
-                currentPosition = fs.Position;
-            SwitchChunk(reader, riff_Type, 4); // fmt->IRIS->aux2->data
-                currentPosition = fs.Position;
-            Console.WriteLine($"fileSize: {totalLength}, currentPosition: {currentPosition}");
-            // while (currentPosition < totalLength)
-            // {             
-            //     SwitchChunk(reader, riff_Type, 4); // fmt->IRIS->aux2->data
+            // SwitchChunk(reader, riff_Type, 4); // fmt->IRIS->aux2->data
             //     currentPosition = fs.Position;
-            //     // Console.WriteLine($"currentPosition: {currentPosition}");
-            // }
+            // SwitchChunk(reader, riff_Type, 4); // fmt->IRIS->aux2->data
+            //     currentPosition = fs.Position;
+            // SwitchChunk(reader, riff_Type, 4); // fmt->IRIS->aux2->data
+            //     currentPosition = fs.Position;
+            string Chunk_ID="";
+            while ( Chunk_ID!= "data") //currentPosition < totalLength ||
+        {
+                Chunk_ID=SwitchChunk(reader, riff_Type, 4); // fmt->IRIS->aux2->data
+                currentPosition = fs.Position;
+                // Console.WriteLine($"Chunk_ID: {Chunk_ID}, fileSize: {totalLength}, currentPosition: {currentPosition}");
+                //Console.WriteLine($"Chunk_ID: {Chunk_ID}");
+            }
             // 读取剩余的数据包内容
             // byte[] packetData = reader.ReadBytes((int)fileSize); // 减去头部和整数所占的字节数
 
@@ -120,7 +121,7 @@ void Init(string InFolderPath)
     }
 }
 
-void SwitchChunk(BinaryReader reader,string riff_Type, int length)
+string SwitchChunk(BinaryReader reader,string riff_Type, int length)
 {
     string Chunk_ID = Encoding.ASCII.GetString(reader.ReadBytes(length));
     int Chunk_Size = reader.ReadInt32();
@@ -142,6 +143,7 @@ void SwitchChunk(BinaryReader reader,string riff_Type, int length)
             data(reader, riff_Type, Chunk_Size);
             break;
     }
+    return Chunk_ID;
 }
 
 string RIFF (BinaryReader reader, int length){
@@ -569,16 +571,19 @@ void data(BinaryReader reader, string riff_Type, int length){
             // }
             break;
         case "SDR ":
-            // switch(TaskNameIndex){
-            //     case 1:
-            //         SignalDetection(dataData,length);
-            //     break;
-            //     case 5:
-            //         RFScanning(dataData,length);
-            //     break;
-            // }
+            int count= length/528448;
+            Console.WriteLine($"共有{count}筆資料");
+            switch(TaskNameIndex){
+                case 1: //定頻
+                    SignalDetection(dataData,length);
+                break;
+                case 5: // 寬頻
+                    RFScanning(dataData,length);
+                break;
+            }
             break;
         case "ADSB":
+            ADSB(dataData, length);
             break;
     }
 }
@@ -608,21 +613,56 @@ void AIS(byte[] dataData,int length){
 }
 
 void SignalDetection(byte[] dataData,int length){ // 定頻
-    for(int i = 0; i < length;i=i+16){
-        byte[] type_Byte = new byte[4];
-        Array.Copy(dataData, 0, type_Byte, 0, 4); // 0,1,2,3
-        int LO = BitConverter.ToInt32(type_Byte, 0);// 將 byte[] 轉換為整數
-        Console.WriteLine($"LO: {LO}");
-    }
+    // for(int i = 0; i < length;i=i+16){
+    //     byte[] type_Byte = new byte[4];
+    //     Array.Copy(dataData, 0, type_Byte, 0, 4); // 0,1,2,3
+    //     int LO = BitConverter.ToInt32(type_Byte, 0);// 將 byte[] 轉換為整數
+    //     Console.WriteLine($"LO: {LO}");
+    // }
 }
 void RFScanning(byte[] dataData,int length){ // 寬頻
-    for(int i = 0; i < length;i=i+528448){
-        // byte[] CheckValue = new byte[4];
-        // Array.Copy(dataData, i, CheckValue, 0, 4);
-        // if()
-        byte[] type_Byte = new byte[4];
-        Array.Copy(dataData, 0, type_Byte, 0, 4); // 0,1,2,3
-        int LO = BitConverter.ToInt32(type_Byte, 0);// 將 byte[] 轉換為整數
-        Console.WriteLine($"LO: {LO}");
+    // for(int i = 0; i < length;i=i+528448){
+    //     // byte[] CheckValue = new byte[4];
+    //     // Array.Copy(dataData, i, CheckValue, 0, 4);
+    //     // if()
+    //     byte[] type_Byte = new byte[4];
+    //     Array.Copy(dataData, 0, type_Byte, 0, 4); // 0,1,2,3
+    //     int LO = BitConverter.ToInt32(type_Byte, 0);// 將 byte[] 轉換為整數
+    //     Console.WriteLine($"LO: {LO}");
+    // }
+}
+
+void ADSB(byte[] dataData, int length)
+{
+    // byte myByteInteger= dataData[0];
+    // Console.WriteLine("Combined value before shifting: " + Convert.ToString(myByteInteger, 2).PadLeft(16, '0'));
+    // 右移 3 個位元
+    // myByteInteger >>= 3;
+    // // Console.WriteLine("Combined value after shifting: " + Convert.ToString(myByteInteger, 2).PadLeft(16, '0'));
+    // Console.WriteLine($"DF: {myByteInteger}");
+    int i=0;
+    int count=1;
+    while(i< length){
+        Console.Write($"第{count}筆: ");
+        byte myByteInteger = dataData[i];
+        myByteInteger >>= 3;
+        Console.Write($"第{i}個byte, ");
+        switch (myByteInteger)
+        {
+            case 16:
+            case 17:
+            case 19:
+            case 20:
+            case 21:
+                i=i+16;
+                break;
+            default:
+                i = i + 8;
+                break;
+        }
+        
+        Console.WriteLine($"DF: {myByteInteger}");
+        count++;
     }
+    
 }
