@@ -4,6 +4,7 @@ using System.Text;
 ///初始化設定------------------------------------------------------------------------////
 string InFolderPath = $"./Import"; // 指定要搜索的資料夾路徑
 int TaskNameIndex=0;
+long rx_lo_freq=0;
 //string filePath = "RIFF-WAVE Audio/sound.wav";
 //string filePath = "RIFF-AIS/ais_v2_2.ais";
 //string filePath = "RIFF-WAVE Audio/audio7.wav";
@@ -362,7 +363,7 @@ void IRIS(BinaryReader reader, string riff_Type, int length){
 
             byte[] rx_lo_freq_Byte = new byte[8];
             Array.Copy(IRISData, 28, rx_lo_freq_Byte, 0, 8); // 28,29,30,31,32,33,34,35
-            long rx_lo_freq = BitConverter.ToInt64(rx_lo_freq_Byte, 0);// 將 byte[] 轉換為整數
+            rx_lo_freq = BitConverter.ToInt64(rx_lo_freq_Byte, 0);// 將 byte[] 轉換為整數
             Console.WriteLine($"rx_lo_freq: {rx_lo_freq}");
 
             int rx_gain_control_mode = (int)IRISData[36];
@@ -613,6 +614,32 @@ void AIS(byte[] dataData,int length){
 }
 
 void SignalDetection(byte[] dataData,int length){ // 定頻
+    Console.WriteLine(rx_lo_freq);
+    int i = 0,j=0;
+    int count = 1;
+    while (i< length)
+    {
+        
+        byte[] LO_Byte = new byte[4];
+        Array.Copy(dataData, i, LO_Byte, 0, 4); // 0,1,2,3
+        int LO = BitConverter.ToInt32(LO_Byte, 0);// 將 byte[] 轉換為整數
+        if(rx_lo_freq==LO)
+        {
+            j++;
+            Console.Write($"第{count}筆: ");
+            Console.Write($"第{j}區塊: ");
+            Console.WriteLine($"第{i}個byte, ");
+            // Console.WriteLine($"LO: {LO}");
+
+            SDR_Chunk(i, dataData);
+            if (j==4){
+                count++;
+                j=0;
+            }
+        }
+       
+        i =i+4;
+    }
     // for(int i = 0; i < length;i=i+16){
     //     byte[] type_Byte = new byte[4];
     //     Array.Copy(dataData, 0, type_Byte, 0, 4); // 0,1,2,3
@@ -620,6 +647,59 @@ void SignalDetection(byte[] dataData,int length){ // 定頻
     //     Console.WriteLine($"LO: {LO}");
     // }
 }
+void SDR_Chunk(int byteIndex, byte[] dataData)
+{
+    int i= byteIndex;
+
+    int LO = ToInt32(dataData,i);
+    Console.WriteLine($"LO: {LO}");
+    i =i+4;
+
+    short Low_Threshold = ToInt16(dataData, i);
+    Console.WriteLine($"Low_Threshold: {Low_Threshold}");
+    i=i+2;
+
+    short High_Threshold = ToInt16(dataData, i);
+    Console.WriteLine($"High_Threshold: {High_Threshold}");
+    i = i + 2;
+
+    int Covariance = ToInt32(dataData, i);
+    Console.WriteLine($"Covariance: {Covariance}");
+    i = i + 4;
+   
+    for(int k=0;k<65536;k++){
+        short FFT = ToInt16(dataData, i);
+        //Console.WriteLine($"第{k}組, FFT_LOW: {FFT}");
+        i = i + 2;
+    }
+    int Signals_number = ToInt32(dataData, i);
+    Console.WriteLine($"Signals_number: {Signals_number}");
+    i = i + 4;
+    for (int k = 0; k < Signals_number; k++)
+    {
+        short Sig_start = ToInt16(dataData, i);
+        Console.WriteLine($"Sig{k+1}_start: {Sig_start}");
+        i = i + 2;
+        short Sig_end = ToInt16(dataData, i);
+        Console.WriteLine($"Sig{k + 1}_end: {Sig_end}");
+        i = i + 2;
+    }
+}
+
+int ToInt32(byte[] data, int startIndex)
+{
+    byte[] byteData = new byte[4];
+    Array.Copy(data, startIndex, byteData, 0, 4);
+    return BitConverter.ToInt32(byteData, 0);
+}
+
+short ToInt16(byte[] data, int startIndex)
+{
+    byte[] byteData = new byte[2];
+    Array.Copy(data, startIndex, byteData, 0, 2);
+    return BitConverter.ToInt16(byteData, 0);
+}
+
 void RFScanning(byte[] dataData,int length){ // 寬頻
     // for(int i = 0; i < length;i=i+528448){
     //     // byte[] CheckValue = new byte[4];
