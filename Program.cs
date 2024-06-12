@@ -1,5 +1,6 @@
 ﻿// See https://aka.ms/new-console-template for more information
 
+using System.Globalization;
 using System.Text;
 ///初始化設定------------------------------------------------------------------------////
 string InFolderPath = $"./Import"; // 指定要搜索的資料夾路徑
@@ -579,7 +580,7 @@ void data(BinaryReader reader, string riff_Type, int length){
                     SignalDetection(dataData,length);
                 break;
                 case 5: // 寬頻
-                    RFScanning(dataData,length);
+                    RFScanning(dataData, count);
                 break;
             }
             break;
@@ -619,97 +620,104 @@ void SignalDetection(byte[] dataData,int length){ // 定頻
     int count = 1;
     while (i< length)
     {
-        
-        byte[] LO_Byte = new byte[4];
-        Array.Copy(dataData, i, LO_Byte, 0, 4); // 0,1,2,3
-        int LO = BitConverter.ToInt32(LO_Byte, 0);// 將 byte[] 轉換為整數
-        if(rx_lo_freq==LO)
+
+        //Console.WriteLine($"LO: {LO}");
+        // byte[] LO_Byte = new byte[4];
+        // Array.Copy(dataData, i, LO_Byte, 0, 4); // 0,1,2,3
+        // int LO = BitConverter.ToInt32(LO_Byte, 0);// 將 byte[] 轉換為整數
+        uint LO = ToUInt32(dataData, i);
+        if (rx_lo_freq==LO)
         {
             j++;
             Console.Write($"第{count}筆: ");
             Console.Write($"第{j}區塊: ");
             Console.WriteLine($"第{i}個byte, ");
             // Console.WriteLine($"LO: {LO}");
-
             SDR_Chunk(i, dataData);
             if (j==4){
                 count++;
                 j=0;
             }
         }
-       
         i =i+4;
     }
-    // for(int i = 0; i < length;i=i+16){
-    //     byte[] type_Byte = new byte[4];
-    //     Array.Copy(dataData, 0, type_Byte, 0, 4); // 0,1,2,3
-    //     int LO = BitConverter.ToInt32(type_Byte, 0);// 將 byte[] 轉換為整數
-    //     Console.WriteLine($"LO: {LO}");
-    // }
 }
-void SDR_Chunk(int byteIndex, byte[] dataData)
+
+int SDR_Chunk(int byteIndex, byte[] dataData)
 {
     int i= byteIndex;
 
-    int LO = ToInt32(dataData,i);
+    uint LO = ToUInt32(dataData,i);
     Console.WriteLine($"LO: {LO}");
     i =i+4;
 
-    short Low_Threshold = ToInt16(dataData, i);
+    ushort Low_Threshold = ToUInt16(dataData, i);
     Console.WriteLine($"Low_Threshold: {Low_Threshold}");
     i=i+2;
 
-    short High_Threshold = ToInt16(dataData, i);
+    ushort High_Threshold = ToUInt16(dataData, i);
     Console.WriteLine($"High_Threshold: {High_Threshold}");
     i = i + 2;
 
-    int Covariance = ToInt32(dataData, i);
+    uint Covariance = ToUInt32(dataData, i);
     Console.WriteLine($"Covariance: {Covariance}");
     i = i + 4;
    
     for(int k=0;k<65536;k++){
-        short FFT = ToInt16(dataData, i);
+        ushort FFT = ToUInt16(dataData, i);
         //Console.WriteLine($"第{k}組, FFT_LOW: {FFT}");
         i = i + 2;
     }
-    int Signals_number = ToInt32(dataData, i);
+    uint Signals_number = ToUInt32(dataData, i);
     Console.WriteLine($"Signals_number: {Signals_number}");
     i = i + 4;
     for (int k = 0; k < Signals_number; k++)
     {
-        short Sig_start = ToInt16(dataData, i);
+        ushort Sig_start = ToUInt16(dataData, i);
         Console.WriteLine($"Sig{k+1}_start: {Sig_start}");
         i = i + 2;
-        short Sig_end = ToInt16(dataData, i);
+        ushort Sig_end = ToUInt16(dataData, i);
         Console.WriteLine($"Sig{k + 1}_end: {Sig_end}");
         i = i + 2;
     }
+    return i;
 }
 
-int ToInt32(byte[] data, int startIndex)
+uint ToUInt32(byte[] data, int startIndex)
 {
     byte[] byteData = new byte[4];
     Array.Copy(data, startIndex, byteData, 0, 4);
-    return BitConverter.ToInt32(byteData, 0);
+    return BitConverter.ToUInt32(byteData, 0);
 }
 
-short ToInt16(byte[] data, int startIndex)
+ushort ToUInt16(byte[] data, int startIndex)
 {
     byte[] byteData = new byte[2];
     Array.Copy(data, startIndex, byteData, 0, 2);
-    return BitConverter.ToInt16(byteData, 0);
+    return BitConverter.ToUInt16(byteData, 0);
 }
 
-void RFScanning(byte[] dataData,int length){ // 寬頻
-    // for(int i = 0; i < length;i=i+528448){
-    //     // byte[] CheckValue = new byte[4];
-    //     // Array.Copy(dataData, i, CheckValue, 0, 4);
-    //     // if()
-    //     byte[] type_Byte = new byte[4];
-    //     Array.Copy(dataData, 0, type_Byte, 0, 4); // 0,1,2,3
-    //     int LO = BitConverter.ToInt32(type_Byte, 0);// 將 byte[] 轉換為整數
-    //     Console.WriteLine($"LO: {LO}");
-    // }
+void RFScanning(byte[] dataData,int count)
+{ // 寬頻
+    Console.WriteLine(rx_lo_freq);
+    //Console.Write($"{count}: ");
+    int i = 0;
+    for(int index=1; index <= count; index++){
+        uint LO = ToUInt32(dataData, i);
+        if(LO>=(rx_lo_freq+8000000* (index-1)-10000)&& LO <= (rx_lo_freq + 8000000 * (index - 1) + 10000))
+        {
+            for (int j = 0; j < 4; j++)
+            {
+                Console.Write($"第{index}筆: ");
+                Console.WriteLine($"第{j + 1}區塊: ");
+                //Console.WriteLine($"第{i}個byte, ");
+                i = SDR_Chunk(i, dataData);
+            }
+        }
+        
+        i= index * 528448;
+        // 
+    }
 }
 
 void ADSB(byte[] dataData, int length)
