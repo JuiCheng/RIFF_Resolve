@@ -49,13 +49,11 @@ long rx_lo_freq=0;
             fileNo++;
         }
         int FileNumber = 0; // 選擇第幾個檔案
-        // int SearchIndex = -1;
         do
         {
             Console.Write("\nPlease select the file number:");
             FileNumber = int.Parse(Console.ReadLine());
             FileName = Path.GetFileName(files[FileNumber - 1]); // 取得選取的檔案檔名
-            // SearchIndex = csvname.IndexOf(searchString); // 搜尋檔案副檔名是否為.csv
         } while (FileNumber < 1 && FileNumber > files.Length);
         
         ////--------------------------------------------------------------------------------////
@@ -65,10 +63,8 @@ long rx_lo_freq=0;
             // 檢查目前的讀取位置和流的總長度
             long currentPosition = fs.Position;
             long totalLength = fs.Length;
-            //long fileSize = fs.Length;
             Console.WriteLine($"fileSize: {totalLength}");
-            // byte[] packetData = reader.ReadBytes((int)fileSize);                                                    
-            
+           
             // RIFF
             string Chunk_ID_RIFF = Encoding.ASCII.GetString(reader.ReadBytes(4));
             int Chunk_Size = reader.ReadInt32();
@@ -78,30 +74,12 @@ long rx_lo_freq=0;
             SwitchChunk(reader, riff_Type, 4); // fmt->IRIS->aux2->data
             currentPosition = fs.Position;
 
-            // SwitchChunk(reader, riff_Type, 4); // fmt->IRIS->aux2->data
-            //     currentPosition = fs.Position;
-            // SwitchChunk(reader, riff_Type, 4); // fmt->IRIS->aux2->data
-            //     currentPosition = fs.Position;
-            // SwitchChunk(reader, riff_Type, 4); // fmt->IRIS->aux2->data
-            //     currentPosition = fs.Position;
             string Chunk_ID="";
             while ( Chunk_ID!= "data") //currentPosition < totalLength ||
-        {
+            {
                 Chunk_ID=SwitchChunk(reader, riff_Type, 4); // fmt->IRIS->aux2->data
                 currentPosition = fs.Position;
-                // Console.WriteLine($"Chunk_ID: {Chunk_ID}, fileSize: {totalLength}, currentPosition: {currentPosition}");
-                //Console.WriteLine($"Chunk_ID: {Chunk_ID}");
             }
-            // 读取剩余的数据包内容
-            // byte[] packetData = reader.ReadBytes((int)fileSize); // 减去头部和整数所占的字节数
-
-            // // 输出数据包的十六进制表示
-            // Console.WriteLine("數據包內容（十六進制）：");
-            // foreach (byte b in packetData)
-            // {
-            //     Console.Write($"{b:X2} ");
-            // }
-
             fs.Close();
         }
     }
@@ -589,6 +567,7 @@ void data(BinaryReader reader, string riff_Type, int length){
             break;
     }
 }
+
 void AIS(byte[] dataData,int length){
 
     for(int i = 0; i < length;i=i+16){
@@ -620,11 +599,6 @@ void SignalDetection(byte[] dataData,int length){ // 定頻
     int count = 1;
     while (i< length)
     {
-
-        //Console.WriteLine($"LO: {LO}");
-        // byte[] LO_Byte = new byte[4];
-        // Array.Copy(dataData, i, LO_Byte, 0, 4); // 0,1,2,3
-        // int LO = BitConverter.ToInt32(LO_Byte, 0);// 將 byte[] 轉換為整數
         uint LO = ToUInt32(dataData, i);
         if (rx_lo_freq==LO)
         {
@@ -662,12 +636,15 @@ int SDR_Chunk(int byteIndex, byte[] dataData)
     uint Covariance = ToUInt32(dataData, i);
     Console.WriteLine($"Covariance: {Covariance}");
     i = i + 4;
-   
+    string FFT_str="";
     for(int k=0;k<65536;k++){
         ushort FFT = ToUInt16(dataData, i);
+        FFT_str+=$"{FFT},";
         //Console.WriteLine($"第{k}組, FFT_LOW: {FFT}");
         i = i + 2;
     }
+    FFT_str = FFT_str.Substring(0, FFT_str.Length - 1);
+    //Console.WriteLine($"FFT: {FFT_str}");
     uint Signals_number = ToUInt32(dataData, i);
     Console.WriteLine($"Signals_number: {Signals_number}");
     i = i + 4;
