@@ -568,28 +568,32 @@ void data(BinaryReader reader, string riff_Type, int length){
     }
 }
 
-void AIS(byte[] dataData,int length){
-
-    for(int i = 0; i < length;i=i+16){
+void AIS(byte[] dataData, int length)
+{
+    int count = 1;
+    for (int i = 0; i < length; i = i + 16)
+    {
+        Console.WriteLine($"Ship : {count}");
         byte[] type_Byte = new byte[4];
-        Array.Copy(dataData, 0, type_Byte, 0, 4); // 0,1,2,3
+        Array.Copy(dataData, i, type_Byte, 0, 4); // 0,1,2,3
         int type = BitConverter.ToInt32(type_Byte, 0);// 將 byte[] 轉換為整數
         Console.WriteLine($"type: {type}");
-
+        Console.WriteLine($"CRC: " + (type > 0 ? "pass" : "failed"));
         byte[] mmsi_Byte = new byte[4];
-        Array.Copy(dataData, 4, mmsi_Byte, 0, 4); // 4,5,6,7
+        Array.Copy(dataData, i + 4, mmsi_Byte, 0, 4); // 4,5,6,7
         int mmsi = BitConverter.ToInt32(mmsi_Byte, 0);// 將 byte[] 轉換為整數
         Console.WriteLine($"mmsi: {mmsi}");
 
         byte[] lon_Byte = new byte[4];
-        Array.Copy(dataData, 8, lon_Byte, 0, 4); // 8,9,10,11
-        double lon = BitConverter.ToInt32(lon_Byte, 0)/600000.0;// 將 byte[] 轉換為整數
+        Array.Copy(dataData, i + 8, lon_Byte, 0, 4); // 8,9,10,11
+        double lon = BitConverter.ToInt32(lon_Byte, 0) / 600000.0;// 將 byte[] 轉換為整數
         Console.WriteLine($"lon: {lon}");
 
         byte[] lat_Byte = new byte[4];
-        Array.Copy(dataData, 12, lat_Byte, 0, 4); // 12,13,14,15
-        double lat = BitConverter.ToInt32(lat_Byte, 0)/600000.0;// 將 byte[] 轉換為整數
+        Array.Copy(dataData, i + 12, lat_Byte, 0, 4); // 12,13,14,15
+        double lat = BitConverter.ToInt32(lat_Byte, 0) / 600000.0;// 將 byte[] 轉換為整數
         Console.WriteLine($"lat: {lat}\n");
+        count++;
     }
 }
 
