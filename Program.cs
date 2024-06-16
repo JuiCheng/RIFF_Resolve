@@ -65,10 +65,8 @@ long rx_lo_freq=0;
             // 檢查目前的讀取位置和流的總長度
             long currentPosition = fs.Position;
             long totalLength = fs.Length;
-            //long fileSize = fs.Length;
             Console.WriteLine($"fileSize: {totalLength}");
-            // byte[] packetData = reader.ReadBytes((int)fileSize);                                                    
-            
+                                               
             // RIFF
             string Chunk_ID_RIFF = Encoding.ASCII.GetString(reader.ReadBytes(4));
             int Chunk_Size = reader.ReadInt32();
@@ -78,24 +76,16 @@ long rx_lo_freq=0;
             SwitchChunk(reader, riff_Type, 4); // fmt->IRIS->aux2->data
             currentPosition = fs.Position;
 
-            // SwitchChunk(reader, riff_Type, 4); // fmt->IRIS->aux2->data
-            //     currentPosition = fs.Position;
-            // SwitchChunk(reader, riff_Type, 4); // fmt->IRIS->aux2->data
-            //     currentPosition = fs.Position;
-            // SwitchChunk(reader, riff_Type, 4); // fmt->IRIS->aux2->data
-            //     currentPosition = fs.Position;
             string Chunk_ID="";
             while ( Chunk_ID!= "data") //currentPosition < totalLength ||
-        {
+            {
                 Chunk_ID=SwitchChunk(reader, riff_Type, 4); // fmt->IRIS->aux2->data
                 currentPosition = fs.Position;
-                // Console.WriteLine($"Chunk_ID: {Chunk_ID}, fileSize: {totalLength}, currentPosition: {currentPosition}");
-                //Console.WriteLine($"Chunk_ID: {Chunk_ID}");
             }
-            // 读取剩余的数据包内容
-            // byte[] packetData = reader.ReadBytes((int)fileSize); // 减去头部和整数所占的字节数
 
-            // // 输出数据包的十六进制表示
+            // 读取剩余的数据包内容
+            // byte[] packetData = reader.ReadBytes(totalLength); // 减去头部和整数所占的字节数
+            // 输出数据包的十六进制表示
             // Console.WriteLine("數據包內容（十六進制）：");
             // foreach (byte b in packetData)
             // {
@@ -590,27 +580,29 @@ void data(BinaryReader reader, string riff_Type, int length){
     }
 }
 void AIS(byte[] dataData,int length){
-
+    int count=1;
     for(int i = 0; i < length;i=i+16){
+        Console.WriteLine($"Ship : {count}");
         byte[] type_Byte = new byte[4];
-        Array.Copy(dataData, 0, type_Byte, 0, 4); // 0,1,2,3
+        Array.Copy(dataData, i, type_Byte, 0, 4); // 0,1,2,3
         int type = BitConverter.ToInt32(type_Byte, 0);// 將 byte[] 轉換為整數
         Console.WriteLine($"type: {type}");
-
+        Console.WriteLine($"CRC: "+ (type >0?"pass":"failed"));
         byte[] mmsi_Byte = new byte[4];
-        Array.Copy(dataData, 4, mmsi_Byte, 0, 4); // 4,5,6,7
+        Array.Copy(dataData, i+4, mmsi_Byte, 0, 4); // 4,5,6,7
         int mmsi = BitConverter.ToInt32(mmsi_Byte, 0);// 將 byte[] 轉換為整數
         Console.WriteLine($"mmsi: {mmsi}");
 
         byte[] lon_Byte = new byte[4];
-        Array.Copy(dataData, 8, lon_Byte, 0, 4); // 8,9,10,11
+        Array.Copy(dataData, i+8, lon_Byte, 0, 4); // 8,9,10,11
         double lon = BitConverter.ToInt32(lon_Byte, 0)/600000.0;// 將 byte[] 轉換為整數
         Console.WriteLine($"lon: {lon}");
 
         byte[] lat_Byte = new byte[4];
-        Array.Copy(dataData, 12, lat_Byte, 0, 4); // 12,13,14,15
+        Array.Copy(dataData, i+12, lat_Byte, 0, 4); // 12,13,14,15
         double lat = BitConverter.ToInt32(lat_Byte, 0)/600000.0;// 將 byte[] 轉換為整數
         Console.WriteLine($"lat: {lat}\n");
+        count++;
     }
 }
 
