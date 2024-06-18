@@ -356,9 +356,19 @@ void IRIS(BinaryReader reader, string riff_Type, int length){
             int RIFF_WAVE_Content = (int)IRISData[41]; //41
             Console.WriteLine($"RIFF-WAVE Content: {RIFF_WAVE_Content}");
 
-            int Audio_Filter_BW = (int)IRISData[42]; //42
-            Console.WriteLine($"Audio_Filter_BW: {Audio_Filter_BW}");
-
+            int Audio_Filter_Option = (int)IRISData[42]; //42
+            
+            switch(Audio_Filter_Option){
+                case 0:
+                    Console.WriteLine($"Audio_Filter_Option: {Audio_Filter_Option}-->寬頻");
+                break;
+                case 1:
+                    Console.WriteLine($"Audio_Filter_Option: {Audio_Filter_Option}-->定頻");
+                break;
+                case 2:
+                    Console.WriteLine($"Audio_Filter_Option: {Audio_Filter_Option}-->AM");
+                break;
+            }
             byte[] Audio_Phase_Byte = new byte[2];
             Array.Copy(IRISData, 43, Audio_Phase_Byte, 0, 2); // 43,44
             short Audio_Phase = BitConverter.ToInt16(Audio_Phase_Byte, 0);// 將 byte[] 轉換為整數
