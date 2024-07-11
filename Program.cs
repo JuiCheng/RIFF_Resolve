@@ -75,32 +75,41 @@ uint[] ModesChecksumTable = new uint[]
     ////--------------------------------------------------------------------------------////
     using (FileStream fs = new FileStream($"./Import/{FileName}", FileMode.Open))
     {
+       
         BinaryReader reader = new BinaryReader(fs);
         // 檢查目前的讀取位置和流的總長度
         long currentPosition = fs.Position;
         long totalLength = fs.Length;
         Console.WriteLine($"fileSize: {totalLength}");
-        // 寫入檔案
         string nameWithoutExtension = Path.GetFileNameWithoutExtension(FileName);
-        using (StreamWriter writer = new StreamWriter($"{OutFolderPath}/{nameWithoutExtension}解析結果.txt"))
-        {
-            // RIFF
-            string Chunk_ID_RIFF = Encoding.ASCII.GetString(reader.ReadBytes(4));
-            int Chunk_Size = reader.ReadInt32();
-            output($"Chunk ID : {Chunk_ID_RIFF}",writer);
-            output($"Chunk Size : {Chunk_Size}",writer);
-            string riff_Type = RIFF(reader,4,writer);
-            SwitchChunk(reader, riff_Type, 4,writer,nameWithoutExtension); // fmt->IRIS->aux2->data
-            currentPosition = fs.Position;
-
-            string Chunk_ID="";
-            while ( Chunk_ID!= "data") //currentPosition < totalLength ||
-            {
-                Chunk_ID=SwitchChunk(reader, riff_Type, 4,writer,nameWithoutExtension); // fmt->IRIS->aux2->data
-                currentPosition = fs.Position;
-            }
+        if (totalLength>= 33554432){
+            fs.Close();
+            IQ($"./Import/{FileName}", $"{nameWithoutExtension}");
         }
-        fs.Close();
+        else{
+            // 寫入檔案
+            using (StreamWriter writer = new StreamWriter($"{OutFolderPath}/{nameWithoutExtension}解析結果.txt"))
+            {
+                // RIFF
+                string Chunk_ID_RIFF = Encoding.ASCII.GetString(reader.ReadBytes(4));
+                int Chunk_Size = reader.ReadInt32();
+                output($"Chunk ID : {Chunk_ID_RIFF}", writer);
+                output($"Chunk Size : {Chunk_Size}", writer);
+                string riff_Type = RIFF(reader, 4, writer);
+                SwitchChunk(reader, riff_Type, 4, writer, nameWithoutExtension); // fmt->IRIS->aux2->data
+                currentPosition = fs.Position;
+
+                string Chunk_ID = "";
+                while (Chunk_ID != "data") //currentPosition < totalLength ||
+                {
+                    Chunk_ID = SwitchChunk(reader, riff_Type, 4, writer, nameWithoutExtension); // fmt->IRIS->aux2->data
+                    currentPosition = fs.Position;
+                }
+            }
+            fs.Close();
+        }
+        
+       
     }
 }
 // catch (Exception ex)
@@ -130,6 +139,10 @@ void Init(string InFolderPath,string OutFolderPath)
     if (!Directory.Exists($"{OutFolderPath}/ADSB"))
     {
         Directory.CreateDirectory($"{OutFolderPath}/ADSB");
+    }
+    if (!Directory.Exists($"{OutFolderPath}/IQ"))
+    {
+        Directory.CreateDirectory($"{OutFolderPath}/IQ");
     }
 }
 
@@ -893,4 +906,71 @@ uint ModesChecksum(byte[] msg, int bits)
     }
 
     return crc; // 回傳 24 位元的校驗碼
+}
+
+void IQ(string inputFileName,string FileName)
+{
+    try
+    {
+        using (FileStream fs = new FileStream(inputFileName, FileMode.Open, FileAccess.Read))
+        using (BinaryReader reader = new BinaryReader(fs))
+        {
+            int[] skip = new int[112];
+
+            // Skip the first 112 bytes
+            Byte[] Bytes = reader.ReadBytes(112);
+
+            using (FileStream outputFs = new FileStream($"{OutFolderPath}/IQ/{FileName}_output.wav", FileMode.Create, FileAccess.Write))
+            using (BinaryWriter writer = new BinaryWriter(outputFs))
+            {
+                // Write the skipped data to output file
+                writer.Write(Bytes);
+
+                uint data = 0;
+                while (true)
+                {
+                    data = reader.ReadUInt32();
+                    writer.Write(data);
+                    if (data == 1635017060)
+                        break;
+                }
+
+                data = reader.ReadUInt32();
+                writer.Write(data);
+
+                Console.WriteLine("chunk size is " + data);
+
+                int sampleTime = (int)(data / 32 / 1000000);
+                Console.WriteLine("sample time is " + sampleTime);
+                int size = 16000000 * sampleTime;
+                byte[] test = new byte[size];
+
+                int readCount = reader.Read(test, 0, size);
+                Console.WriteLine("read_count is " + readCount);
+
+                for (int i = 0; i < readCount; i++)
+                {
+                    ushort bitmask = 0x7fff;
+                    byte bit = test[i];
+                    if ((bit >> 14 & 1) == 1)
+                    {
+                        bit = (byte)((bit & bitmask) | (1 << 15));
+                    }
+                    else
+                    {
+                        bit = (byte)(bit & bitmask);
+                    }
+                    test[i] = bit;
+                }
+
+                writer.Write(test, 0, readCount);
+                Console.WriteLine("write_count is " + readCount);
+            }
+        }
+    }
+    catch (Exception ex)
+    {
+        Console.WriteLine("Error: " + ex.Message);
+    }
+
 }
