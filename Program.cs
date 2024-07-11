@@ -7,9 +7,28 @@ string InFolderPath = $"./Import"; // 指定要搜索的資料夾路徑
 string OutFolderPath = $"./Export"; // 指定要搜索的資料夾路徑
 int TaskNameIndex=0;
 long rx_lo_freq=0;
+int Task_General_NS =0;
+// CRC 表格
+uint[] ModesChecksumTable = new uint[]
+{
+    0x3935ea, 0x1c9af5, 0xf1b77e, 0x78dbbf, 0xc397db, 0x9e31e9, 0xb0e2f0, 0x587178,
+    0x2c38bc, 0x161c5e, 0x0b0e2f, 0xfa7d13, 0x82c48d, 0xbe9842, 0x5f4c21, 0xd05c14,
+    0x682e0a, 0x341705, 0xe5f186, 0x72f8c3, 0xc68665, 0x9cb936, 0x4e5c9b, 0xd8d449,
+    0x939020, 0x49c810, 0x24e408, 0x127204, 0x093902, 0x049c81, 0xfdb444, 0x7eda22,
+    0x3f6d11, 0xe04c8c, 0x702646, 0x381323, 0xe3f395, 0x8e03ce, 0x4701e7, 0xdc7af7,
+    0x91c77f, 0xb719bb, 0xa476d9, 0xadc168, 0x56e0b4, 0x2b705a, 0x15b82d, 0xf52612,
+    0x7a9309, 0xc2b380, 0x6159c0, 0x30ace0, 0x185670, 0x0c2b38, 0x06159c, 0x030ace,
+    0x018567, 0xff38b7, 0x80665f, 0xbfc92b, 0xa01e91, 0xaff54c, 0x57faa6, 0x2bfd53,
+    0xea04ad, 0x8af852, 0x457c29, 0xdd4410, 0x6ea208, 0x375104, 0x1ba882, 0x0dd441,
+    0xf91024, 0x7c8812, 0x3e4409, 0xe0d800, 0x706c00, 0x383600, 0x1c1b00, 0x0e0d80,
+    0x0706c0, 0x038360, 0x01c1b0, 0x00e0d8, 0x00706c, 0x003836, 0x001c1b, 0xfff409,
+    0x000000, 0x000000, 0x000000, 0x000000, 0x000000, 0x000000, 0x000000, 0x000000,
+    0x000000, 0x000000, 0x000000, 0x000000, 0x000000, 0x000000, 0x000000, 0x000000,
+    0x000000, 0x000000, 0x000000, 0x000000, 0x000000, 0x000000, 0x000000, 0x000000
+};
 
 
-try
+// try
 {
     // 字串轉Byte
     // string hexString = "FF";
@@ -71,23 +90,23 @@ try
             output($"Chunk ID : {Chunk_ID_RIFF}",writer);
             output($"Chunk Size : {Chunk_Size}",writer);
             string riff_Type = RIFF(reader,4,writer);
-            SwitchChunk(reader, riff_Type, 4,writer); // fmt->IRIS->aux2->data
+            SwitchChunk(reader, riff_Type, 4,writer,nameWithoutExtension); // fmt->IRIS->aux2->data
             currentPosition = fs.Position;
 
             string Chunk_ID="";
             while ( Chunk_ID!= "data") //currentPosition < totalLength ||
             {
-                Chunk_ID=SwitchChunk(reader, riff_Type, 4,writer); // fmt->IRIS->aux2->data
+                Chunk_ID=SwitchChunk(reader, riff_Type, 4,writer,nameWithoutExtension); // fmt->IRIS->aux2->data
                 currentPosition = fs.Position;
             }
         }
         fs.Close();
     }
 }
-catch (Exception ex)
-{
-    Console.WriteLine($"發生錯誤: {ex.Message}");
-}
+// catch (Exception ex)
+// {
+//     Console.WriteLine($"發生錯誤: {ex.Message}");
+// }
 Console.WriteLine("\n\nPress any key to close.");
 // 等待用戶輸入任意鍵
 Console.ReadLine();
@@ -104,9 +123,17 @@ void Init(string InFolderPath,string OutFolderPath)
     {
         Directory.CreateDirectory(OutFolderPath);
     }
+    if (!Directory.Exists($"{OutFolderPath}/SDR"))
+    {
+        Directory.CreateDirectory($"{OutFolderPath}/SDR");
+    }
+    if (!Directory.Exists($"{OutFolderPath}/ADSB"))
+    {
+        Directory.CreateDirectory($"{OutFolderPath}/ADSB");
+    }
 }
 
-string SwitchChunk(BinaryReader reader,string riff_Type, int length,StreamWriter writer)
+string SwitchChunk(BinaryReader reader,string riff_Type, int length,StreamWriter writer,string nameWithoutExtension)
 {
     string Chunk_ID = Encoding.ASCII.GetString(reader.ReadBytes(length));
     int Chunk_Size = reader.ReadInt32();
@@ -126,7 +153,7 @@ string SwitchChunk(BinaryReader reader,string riff_Type, int length,StreamWriter
             aux2(reader, riff_Type, Chunk_Size,writer);
             break;
         case "data":
-            data(reader, riff_Type, Chunk_Size,writer);
+            data(reader, riff_Type, Chunk_Size,writer,nameWithoutExtension);
             break;
     }
     return Chunk_ID;
@@ -308,7 +335,7 @@ void IRIS(BinaryReader reader, string riff_Type, int length,StreamWriter writer)
             DateTime Task_General_Booking_Time = new DateTime(1970, 1, 1).AddMilliseconds(Task_General_UNIX_int);
             output($"Booking Time (UNIX): {Task_General_Booking_Time_int}",writer);
 
-            int Task_General_NS = (int)IRISData[10];
+            Task_General_NS = (int)IRISData[10];
             output($"NS: {Task_General_NS}s",writer);
             // switch (Task_General_NS)
             // {
@@ -568,7 +595,7 @@ void aux2(BinaryReader reader, string riff_Type, int length,StreamWriter writer)
     
 }
 
-void data(BinaryReader reader, string riff_Type, int length,StreamWriter writer){
+void data(BinaryReader reader, string riff_Type, int length,StreamWriter writer,string nameWithoutExtension){
     byte[] dataData = reader.ReadBytes(length);
     switch (riff_Type)
     {
@@ -585,17 +612,23 @@ void data(BinaryReader reader, string riff_Type, int length,StreamWriter writer)
         case "SDR ":
             int count= length/528448;
             output($"共有{count}筆資料",writer);
-            switch(TaskNameIndex){
-                case 1: //定頻
-                    SignalDetection(dataData,length,writer);
-                break;
-                case 5: // 寬頻
-                    RFScanning(dataData, count,writer);
-                break;
+            using (BinaryWriter outPutWriter = new BinaryWriter(File.Open($"{OutFolderPath}/SDR/{nameWithoutExtension}_output.txt", FileMode.Create)))
+            {
+                switch(TaskNameIndex){
+                    case 1: //定頻
+                        SignalDetection(dataData,length,writer,outPutWriter);
+                    break;
+                    case 5: // 寬頻
+                        RFScanning(dataData, count,writer,outPutWriter);
+                    break;
+                }
             }
             break;
         case "ADSB":
-            ADSB(dataData, length,writer);
+            using (BinaryWriter outPutWriter = new BinaryWriter(File.Open($"{OutFolderPath}/ADSB/{nameWithoutExtension}_output.txt", FileMode.Create)))
+            {
+                ADSB(dataData, length,writer,outPutWriter);
+            }
             break;
     }
 }
@@ -629,10 +662,15 @@ void AIS(byte[] dataData, int length,StreamWriter writer)
     }
 }
 
-void SignalDetection(byte[] dataData,int length,StreamWriter writer){ // 定頻
+void SignalDetection(byte[] dataData,int length,StreamWriter writer,BinaryWriter outPutWriter){ // 定頻
     Console.WriteLine(rx_lo_freq);
+    
+    List<byte> hexData = new List<byte> ();
+    byte[] NS_bytes = BitConverter.GetBytes(Task_General_NS); // 將整數轉換為 byte[]
+    hexData.AddRange(NS_bytes);
     int i = 0,j=0;
     int count = 1;
+    int index=0;
     while (i< length)
     {
         uint LO = ToUInt32(dataData, i);
@@ -640,14 +678,20 @@ void SignalDetection(byte[] dataData,int length,StreamWriter writer){ // 定頻
         {
             j++;
             output($"第{count}筆,第{j}區塊,第{i}個byte:",writer);
-            SDR_Chunk(i, dataData,writer);
+            index=SDR_Chunk(i, dataData,writer);
+            Console.WriteLine($"i={i},index={index}");
+            byte[] Bytes = new byte[index-i];
+            Array.Copy(dataData, i, Bytes, 0, Bytes.Length); // 0,1,2,3
+            hexData.AddRange(Bytes);
+
             if (j==4){
                 count++;
                 j=0;
-            }
+            } 
         }
         i =i+4;
     }
+    outPutWriter.Write(hexData.ToArray());
 }
 
 int SDR_Chunk(int byteIndex, byte[] dataData,StreamWriter writer)
@@ -669,15 +713,15 @@ int SDR_Chunk(int byteIndex, byte[] dataData,StreamWriter writer)
     uint Covariance = ToUInt32(dataData, i);
     output($"Covariance: {Covariance}",writer);
     i = i + 4;
-    string FFT_str="";
+    // string FFT_str="";
     for(int k=0;k<65536;k++){
         ushort FFT = ToUInt16(dataData, i);
-        FFT_str+=$"{FFT},";
+        // FFT_str+=$"{FFT},";
         //Console.WriteLine($"第{k}組, FFT_LOW: {FFT}");
         i = i + 2;
     }
-    FFT_str = FFT_str.Substring(0, FFT_str.Length - 1);
-    output($"FFT: {FFT_str}",writer);
+    // FFT_str = FFT_str.Substring(0, FFT_str.Length - 1);
+    // output($"FFT: {FFT_str}",writer);
     uint Signals_number = ToUInt32(dataData, i);
     output($"Signals_number: {Signals_number}",writer);
     i = i + 4;
@@ -693,11 +737,15 @@ int SDR_Chunk(int byteIndex, byte[] dataData,StreamWriter writer)
     return i;
 }
 
-void RFScanning(byte[] dataData,int count,StreamWriter writer)
+void RFScanning(byte[] dataData,int count,StreamWriter writer,BinaryWriter outPutWriter)
 { // 寬頻
     Console.WriteLine(rx_lo_freq);
     //Console.Write($"{count}: ");
     int i = 0;
+    int byteindex=0;
+    List<byte> hexData = new List<byte> ();
+    byte[] count_bytes = BitConverter.GetBytes(count); // 將整數轉換為 byte[]
+    hexData.AddRange(count_bytes);
     for(int index=1; index <= count; index++){
         uint LO = ToUInt32(dataData, i);
         if(LO>=(rx_lo_freq+8000000* (index-1)-10000)&& LO <= (rx_lo_freq + 8000000 * (index - 1) + 10000))
@@ -706,16 +754,22 @@ void RFScanning(byte[] dataData,int count,StreamWriter writer)
             {
                 output($"第{index}筆,第{j + 1}區塊: ",writer);
                 //Console.WriteLine($"第{i}個byte, ");
+                byteindex=i;
                 i = SDR_Chunk(i, dataData,writer);
+                byte[] Bytes = new byte[i-byteindex];
+                Array.Copy(dataData, byteindex, Bytes, 0, Bytes.Length); // 0,1,2,3
+                hexData.AddRange(Bytes);
+                Console.WriteLine($"i={byteindex},index={i}");
             }
         }
         
         i= index * 528448;
         // 
     }
+    outPutWriter.Write(hexData.ToArray());
 }
 
-void ADSB(byte[] dataData, int length,StreamWriter writer)
+void ADSB(byte[] dataData, int length,StreamWriter writer,BinaryWriter outPutWriter)
 {
     // byte myByteInteger= dataData[0];
     // Console.WriteLine("Combined value before shifting: " + Convert.ToString(myByteInteger, 2).PadLeft(16, '0'));
@@ -725,7 +779,10 @@ void ADSB(byte[] dataData, int length,StreamWriter writer)
     // Console.WriteLine($"DF: {myByteInteger}");
     int i=0;
     int count=1;
+    List<byte> hexData = new List<byte> ();
+    
     while(i< length){
+        int CRC=0;
         byte myByteInteger = dataData[i];
         myByteInteger >>= 3;
         switch (myByteInteger)
@@ -735,15 +792,33 @@ void ADSB(byte[] dataData, int length,StreamWriter writer)
             case 19:
             case 20:
             case 21:
+            case 22:
+                byte[] Bytes_14 = new byte[14];
+                byte[] Bytes_16 = new byte[16];
+                Array.Copy(dataData, i, Bytes_14, 0, 14);
+                CRC=DetectCRC(Bytes_14,14*8);
+                dataData[i+14]= (byte)(CRC == 0 ? 0x00 : 0x01);
+                Array.Copy(dataData, i, Bytes_16, 0, 16); 
+                hexData.AddRange(Bytes_16);
                 i=i+16;
                 break;
             default:
+                byte[] Bytes_7 = new byte[7];
+                byte[] Bytes_8 = new byte[8];
+                Array.Copy(dataData, i, Bytes_7, 0, 7);
+                CRC=DetectCRC(Bytes_7,7*8);
+                dataData[i+7]= (byte)(CRC == 0 ? 0x00 : 0x01);
+                Array.Copy(dataData, i, Bytes_8, 0, 8); 
+                hexData.AddRange(Bytes_8);
                 i = i + 8;
                 break;
         }
-        output($"第{count}筆,第{i}個byte,DF: {myByteInteger}",writer);
+        output($"第{count}筆,DF: {myByteInteger}, CRC: {CRC} ",writer);
         count++;
     }  
+    byte[] count_bytes = BitConverter.GetBytes(count-1); // 將整數轉換為 byte[]
+    hexData.InsertRange(0, count_bytes);
+    outPutWriter.Write(hexData.ToArray());
 }
 
 uint ToUInt32(byte[] data, int startIndex)
@@ -763,4 +838,59 @@ ushort ToUInt16(byte[] data, int startIndex)
 void output(string text,StreamWriter  writer){
     Console.WriteLine($"{text}");
     writer.WriteLine($"{text}");
+}
+
+// 檢查CRC
+int DetectCRC(byte[] msg, int bitLength)
+{
+    uint crc = 0;
+    uint crc2;
+    string hexString = msg[bitLength/8-1].ToString("X");
+    // Console.WriteLine(hexString);
+    // bitLength 是該筆ADS-B的長度 (112 or 56)
+    // 取得 crc
+    crc = ((uint)msg[(bitLength / 8) - 3] << 16) |
+            ((uint)msg[(bitLength / 8) - 2] << 8) |
+            (uint)msg[(bitLength / 8) - 1];
+    // Console.WriteLine($"{((uint)msg[(bitLength / 8) - 3] << 16)},{((uint)msg[(bitLength / 8) - 2] << 8)},{(uint)msg[(bitLength / 8) - 1]}={crc}");
+    // 設定訊息的 crc
+    //Msg.crc=crc;
+
+    // 使用 modesChecksum 方法取得 crc2
+    crc2 = ModesChecksum(msg, bitLength);
+
+    // 比對 crc 與 crc2
+    if (crc == crc2)
+    {
+        return 1;
+    }
+    else
+    {
+        return 0;
+    }
+}
+
+// 計算 CRC
+uint ModesChecksum(byte[] msg, int bits)
+{
+    uint crc = 0;
+    int offset = (bits == 112) ? 0 : (112 - 56);
+    int j;
+
+    for (j = 0; j < bits; j++)
+    {
+        int byteIndex = j / 8;
+        int bitIndex = j % 8;
+        int bitmask = 1 << (7 - bitIndex);
+
+        // 如果位元被設定，則與對應的表格項目進行 XOR
+        if ((msg[byteIndex] & bitmask) != 0)
+        {
+            // Console.Write($"{crc} xor {ModesChecksumTable[j + offset]},j: {j},offset: {offset},j + offset: {j + offset}=");
+            crc ^= ModesChecksumTable[j + offset];
+            // Console.WriteLine(crc);
+        }
+    }
+
+    return crc; // 回傳 24 位元的校驗碼
 }

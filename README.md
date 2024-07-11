@@ -16,3 +16,9 @@ Ps1.若沒有看到**Import及Export**資料夾，請先開啟AIRS_image_process
 
 Ps2.如果看到以下訊息"**No files found in the ./Import directory. Would you like to search again?(y/s)**"，請先將要解析的CSV檔，放入./Import 資料夾中，然後按y，會重新搜尋資料夾。
 
+## 版本更新
+### V1.2 說明
+1. 新增ADS-B CRC驗證機制
+2. 新增SDR_Scan & SDR_SD 資料處理完成後，並去掉雜訊及FFFFFFFF，於Export/SDR匯出_output.txt檔案，供後處理應用。
+3. 新增ADS-B 資料處理完成後，將每筆資料的有效bytes後一位Byte，加上CRC驗證結果，於Export/ADSB匯出_output.txt檔案，供後處理應用。
+4. _output.txt檔案，前4個Byte皆為該包資料的資料筆數。
