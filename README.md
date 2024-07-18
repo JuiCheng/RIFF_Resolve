@@ -26,3 +26,7 @@ Ps2.如果看到以下訊息"**No files found in the ./Import directory. Would y
 ### V1.3 說明
 1. 新增IQ資料轉換機制
 
+### V1.4 說明
+1. IQ資料轉換機制Bug修正
+2. IQ資料解析heard
+

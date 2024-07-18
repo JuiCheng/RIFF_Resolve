@@ -1,5 +1,6 @@
 ﻿// See https://aka.ms/new-console-template for more information
 
+using System.Diagnostics;
 using System.Globalization;
 using System.Text;
 ///初始化設定------------------------------------------------------------------------////
@@ -8,6 +9,7 @@ string OutFolderPath = $"./Export"; // 指定要搜索的資料夾路徑
 int TaskNameIndex=0;
 long rx_lo_freq=0;
 int Task_General_NS =0;
+string riff_Type="";
 // CRC 表格
 uint[] ModesChecksumTable = new uint[]
 {
@@ -78,38 +80,30 @@ uint[] ModesChecksumTable = new uint[]
        
         BinaryReader reader = new BinaryReader(fs);
         // 檢查目前的讀取位置和流的總長度
-        long currentPosition = fs.Position;
+        // long currentPosition = fs.Position;
         long totalLength = fs.Length;
         Console.WriteLine($"fileSize: {totalLength}");
         string nameWithoutExtension = Path.GetFileNameWithoutExtension(FileName);
-        if (totalLength>= 33554432){
-            fs.Close();
-            IQ($"./Import/{FileName}", $"{nameWithoutExtension}");
-        }
-        else{
             // 寫入檔案
-            using (StreamWriter writer = new StreamWriter($"{OutFolderPath}/{nameWithoutExtension}解析結果.txt"))
+            using (StreamWriter writer = new StreamWriter($"{OutFolderPath}/ParsedResult/{nameWithoutExtension}解析結果.txt"))
             {
                 // RIFF
                 string Chunk_ID_RIFF = Encoding.ASCII.GetString(reader.ReadBytes(4));
                 int Chunk_Size = reader.ReadInt32();
                 output($"Chunk ID : {Chunk_ID_RIFF}", writer);
                 output($"Chunk Size : {Chunk_Size}", writer);
-                string riff_Type = RIFF(reader, 4, writer);
-                SwitchChunk(reader, riff_Type, 4, writer, nameWithoutExtension); // fmt->IRIS->aux2->data
-                currentPosition = fs.Position;
+                riff_Type = RIFF(reader, 4, writer);
+                SwitchChunk(reader, 4, writer, nameWithoutExtension,totalLength,FileName,fs); // fmt->IRIS->aux2->data
+                // currentPosition = fs.Position;
 
                 string Chunk_ID = "";
                 while (Chunk_ID != "data") //currentPosition < totalLength ||
                 {
-                    Chunk_ID = SwitchChunk(reader, riff_Type, 4, writer, nameWithoutExtension); // fmt->IRIS->aux2->data
-                    currentPosition = fs.Position;
+                    Chunk_ID = SwitchChunk(reader, 4, writer, nameWithoutExtension,totalLength,FileName,fs); // fmt->IRIS->aux2->data
+                    // currentPosition = fs.Position;
                 }
             }
             fs.Close();
-        }
-        
-       
     }
 }
 // catch (Exception ex)
@@ -123,30 +117,42 @@ Console.ReadLine();
 
 void Init(string InFolderPath,string OutFolderPath)
 {
-    // 檢查資料夾是否存在
-    if (!Directory.Exists(InFolderPath))
-    {
-        Directory.CreateDirectory(InFolderPath);
-    }
-    if (!Directory.Exists(OutFolderPath))
-    {
-        Directory.CreateDirectory(OutFolderPath);
-    }
-    if (!Directory.Exists($"{OutFolderPath}/SDR"))
-    {
-        Directory.CreateDirectory($"{OutFolderPath}/SDR");
-    }
-    if (!Directory.Exists($"{OutFolderPath}/ADSB"))
-    {
-        Directory.CreateDirectory($"{OutFolderPath}/ADSB");
-    }
-    if (!Directory.Exists($"{OutFolderPath}/IQ"))
-    {
-        Directory.CreateDirectory($"{OutFolderPath}/IQ");
-    }
+        // 檢查資料夾是否存在
+        if (!Directory.Exists(OutFolderPath))
+        {
+            Directory.CreateDirectory(OutFolderPath);
+        }
+        if (!Directory.Exists($"{OutFolderPath}/ParsedResult"))
+        {
+            Directory.CreateDirectory($"{OutFolderPath}/ParsedResult");
+        }
+        if (!Directory.Exists($"{OutFolderPath}/SDR"))
+        {
+            Directory.CreateDirectory($"{OutFolderPath}/SDR");
+        }
+        if (!Directory.Exists($"{OutFolderPath}/ADSB"))
+        {
+            Directory.CreateDirectory($"{OutFolderPath}/ADSB");
+        }
+        if (!Directory.Exists($"{OutFolderPath}/Audio"))
+        {
+            Directory.CreateDirectory($"{OutFolderPath}/Audio");
+        }
+        if (!Directory.Exists($"{OutFolderPath}/AIS"))
+        {
+            Directory.CreateDirectory($"{OutFolderPath}/AIS");
+        }
+        if (!Directory.Exists($"{OutFolderPath}/IQ"))
+        {
+            Directory.CreateDirectory($"{OutFolderPath}/IQ");
+        }
+        if (!Directory.Exists($"{OutFolderPath}/PulgIn"))
+        {
+            Directory.CreateDirectory($"{OutFolderPath}/PulgIn");
+        }
 }
 
-string SwitchChunk(BinaryReader reader,string riff_Type, int length,StreamWriter writer,string nameWithoutExtension)
+string SwitchChunk(BinaryReader reader, int length,StreamWriter writer,string nameWithoutExtension,long totalLength,string FileName,FileStream fs)
 {
     string Chunk_ID = Encoding.ASCII.GetString(reader.ReadBytes(length));
     int Chunk_Size = reader.ReadInt32();
@@ -157,16 +163,16 @@ string SwitchChunk(BinaryReader reader,string riff_Type, int length,StreamWriter
     switch (Chunk_ID)
     {
         case "fmt ": 
-            fmt(reader, riff_Type, Chunk_Size,writer);
+            fmt(reader, Chunk_Size,writer);
             break;
         case "iris":
-            IRIS(reader, riff_Type, Chunk_Size,writer);
+            IRIS(reader, Chunk_Size,writer);
             break;
         case "aux2":
-            aux2(reader, riff_Type, Chunk_Size,writer);
+            aux2(reader, Chunk_Size,writer);
             break;
         case "data":
-            data(reader, riff_Type, Chunk_Size,writer,nameWithoutExtension);
+            dataAsync(reader, Chunk_Size,writer,nameWithoutExtension,totalLength,FileName,fs);
             break;
     }
     return Chunk_ID;
@@ -178,7 +184,7 @@ string RIFF (BinaryReader reader, int length,StreamWriter writer){
     return riff_Type;
 }
 
-void fmt(BinaryReader reader, string riff_Type, int length,StreamWriter writer)
+void fmt(BinaryReader reader, int length,StreamWriter writer)
 {
     byte[] fmtData = reader.ReadBytes(length);
     switch (riff_Type)
@@ -273,7 +279,7 @@ void fmt(BinaryReader reader, string riff_Type, int length,StreamWriter writer)
     }
 }
 
-void IRIS(BinaryReader reader, string riff_Type, int length,StreamWriter writer){
+void IRIS(BinaryReader reader, int length,StreamWriter writer){
     byte[] IRISData = reader.ReadBytes(length);
     switch (riff_Type)
     {
@@ -467,7 +473,7 @@ void IRIS(BinaryReader reader, string riff_Type, int length,StreamWriter writer)
     }
 }
 
-void aux2(BinaryReader reader, string riff_Type, int length,StreamWriter writer){
+void aux2(BinaryReader reader, int length,StreamWriter writer){
     byte[] aux2Data = reader.ReadBytes(length);
     switch (riff_Type)
     {
@@ -608,41 +614,55 @@ void aux2(BinaryReader reader, string riff_Type, int length,StreamWriter writer)
     
 }
 
-void data(BinaryReader reader, string riff_Type, int length,StreamWriter writer,string nameWithoutExtension){
+async Task dataAsync(BinaryReader reader, int length,StreamWriter writer,string nameWithoutExtension,long totalLength,string FileName,FileStream fs){
     byte[] dataData = reader.ReadBytes(length);
-    switch (riff_Type)
-    {
-        case "AIS ":
-            AIS(dataData,length,writer);
-            break;
-        case "WAVE":
-            output("數據包內容（十六進制）：",writer);
-            // foreach (byte b in dataData)
-            // {
-            //     Console.Write($"{b:X2} ");
-            // }
-            break;
-        case "SDR ":
-            int count= length/528448;
-            output($"共有{count}筆資料",writer);
-            using (BinaryWriter outPutWriter = new BinaryWriter(File.Open($"{OutFolderPath}/SDR/{nameWithoutExtension}_output.txt", FileMode.Create)))
-            {
-                switch(TaskNameIndex){
-                    case 1: //定頻
-                        SignalDetection(dataData,length,writer,outPutWriter);
-                    break;
-                    case 5: // 寬頻
-                        RFScanning(dataData, count,writer,outPutWriter);
-                    break;
+    if (totalLength>= 16777216){ // 解IQ資料
+                fs.Close();
+                // 執行 CMD 命令來執行 remove_16th_bit.exe
+                string command = "cmd.exe";
+                string arguments = $"/c cd \"./{OutFolderPath}/PulgIn\" && \"remove_16th_bit.exe\" \"../../Import/{FileName}\" \"../IQ/{nameWithoutExtension}_output.wav\"";
+                ProcessStartInfo psi = new ProcessStartInfo(command, arguments);
+                psi.RedirectStandardOutput = true;
+                psi.UseShellExecute = false;
+
+                Process process = new Process();
+                process.StartInfo = psi;
+                process.Start();
+                await process.WaitForExitAsync(); // 使用非同步的 WaitForExit 方法等待命令執行完畢
+                int exitCode = process.ExitCode;
+                process.Close();
+                // riff_Type="IQ";
+    }else{
+        switch (riff_Type)
+        {
+            case "AIS ":
+                AIS(dataData,length,writer);
+                break;
+            case "WAVE":
+                 output("數據包內容（十六進制）：",writer);
+                break;
+            case "SDR ":
+                int count= length/528448;
+                output($"共有{count}筆資料",writer);
+                using (BinaryWriter outPutWriter = new BinaryWriter(File.Open($"{OutFolderPath}/SDR/{nameWithoutExtension}_output.txt", FileMode.Create)))
+                {
+                    switch(TaskNameIndex){
+                        case 1: //定頻
+                            SignalDetection(dataData,length,writer,outPutWriter);
+                        break;
+                        case 5: // 寬頻
+                            RFScanning(dataData, count,writer,outPutWriter);
+                        break;
+                    }
                 }
-            }
-            break;
-        case "ADSB":
-            using (BinaryWriter outPutWriter = new BinaryWriter(File.Open($"{OutFolderPath}/ADSB/{nameWithoutExtension}_output.txt", FileMode.Create)))
-            {
-                ADSB(dataData, length,writer,outPutWriter);
-            }
-            break;
+                break;
+            case "ADSB":
+                using (BinaryWriter outPutWriter = new BinaryWriter(File.Open($"{OutFolderPath}/ADSB/{nameWithoutExtension}_output.txt", FileMode.Create)))
+                {
+                    ADSB(dataData, length,writer,outPutWriter);
+                }
+                break;
+        }
     }
 }
 
@@ -906,71 +926,4 @@ uint ModesChecksum(byte[] msg, int bits)
     }
 
     return crc; // 回傳 24 位元的校驗碼
-}
-
-void IQ(string inputFileName,string FileName)
-{
-    try
-    {
-        using (FileStream fs = new FileStream(inputFileName, FileMode.Open, FileAccess.Read))
-        using (BinaryReader reader = new BinaryReader(fs))
-        {
-            int[] skip = new int[112];
-
-            // Skip the first 112 bytes
-            Byte[] Bytes = reader.ReadBytes(112);
-
-            using (FileStream outputFs = new FileStream($"{OutFolderPath}/IQ/{FileName}_output.wav", FileMode.Create, FileAccess.Write))
-            using (BinaryWriter writer = new BinaryWriter(outputFs))
-            {
-                // Write the skipped data to output file
-                writer.Write(Bytes);
-
-                uint data = 0;
-                while (true)
-                {
-                    data = reader.ReadUInt32();
-                    writer.Write(data);
-                    if (data == 1635017060)
-                        break;
-                }
-
-                data = reader.ReadUInt32();
-                writer.Write(data);
-
-                Console.WriteLine("chunk size is " + data);
-
-                int sampleTime = (int)(data / 32 / 1000000);
-                Console.WriteLine("sample time is " + sampleTime);
-                int size = 16000000 * sampleTime;
-                byte[] test = new byte[size];
-
-                int readCount = reader.Read(test, 0, size);
-                Console.WriteLine("read_count is " + readCount);
-
-                for (int i = 0; i < readCount; i++)
-                {
-                    ushort bitmask = 0x7fff;
-                    byte bit = test[i];
-                    if ((bit >> 14 & 1) == 1)
-                    {
-                        bit = (byte)((bit & bitmask) | (1 << 15));
-                    }
-                    else
-                    {
-                        bit = (byte)(bit & bitmask);
-                    }
-                    test[i] = bit;
-                }
-
-                writer.Write(test, 0, readCount);
-                Console.WriteLine("write_count is " + readCount);
-            }
-        }
-    }
-    catch (Exception ex)
-    {
-        Console.WriteLine("Error: " + ex.Message);
-    }
-
 }
