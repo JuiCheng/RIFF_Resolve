@@ -112,7 +112,7 @@ uint[] ModesChecksumTable = new uint[]
 // }
 Console.WriteLine("\n\nPress any key to close.");
 // 等待用戶輸入任意鍵
-Console.ReadLine();
+// Console.ReadLine();
 
 
 void Init(string InFolderPath,string OutFolderPath)
@@ -661,6 +661,21 @@ async Task dataAsync(BinaryReader reader, int length,StreamWriter writer,string 
                 {
                     ADSB(dataData, length,writer,outPutWriter);
                 }
+                // fs.Close();
+                // 執行 CMD 命令來執行 deADSB.exe
+                string command = "cmd.exe";
+                string arguments = $"/c cd \"./{OutFolderPath}/PulgIn\" && \"deADSB.exe\" --input ../ADSB/{nameWithoutExtension}_output.txt  --output ../ADSB/{nameWithoutExtension}_json";
+
+                ProcessStartInfo psi = new ProcessStartInfo(command, arguments);
+                psi.RedirectStandardOutput = true;
+                psi.UseShellExecute = false;
+
+                Process process = new Process();
+                process.StartInfo = psi;
+                process.Start();
+                await process.WaitForExitAsync(); // 使用非同步的 WaitForExit 方法等待命令執行完畢
+                int exitCode = process.ExitCode;
+                process.Close();
                 break;
         }
     }
@@ -852,6 +867,7 @@ void ADSB(byte[] dataData, int length,StreamWriter writer,BinaryWriter outPutWri
     byte[] count_bytes = BitConverter.GetBytes(count-1); // 將整數轉換為 byte[]
     hexData.InsertRange(0, count_bytes);
     outPutWriter.Write(hexData.ToArray());
+
 }
 
 uint ToUInt32(byte[] data, int startIndex)

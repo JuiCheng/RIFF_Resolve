@@ -2,7 +2,6 @@
 *.obj
 *.bin
 *.dll
-*.exe
 *.pdb
 *.user
 *.suo
