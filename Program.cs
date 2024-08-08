@@ -3,6 +3,7 @@
 using System.Diagnostics;
 using System.Globalization;
 using System.Text;
+using Newtonsoft.Json;
 ///初始化設定------------------------------------------------------------------------////
 string InFolderPath = $"./Import"; // 指定要搜索的資料夾路徑
 string OutFolderPath = $"./Export"; // 指定要搜索的資料夾路徑
@@ -666,16 +667,53 @@ async Task dataAsync(BinaryReader reader, int length,StreamWriter writer,string 
                 string command = "cmd.exe";
                 string arguments = $"/c cd \"./{OutFolderPath}/PulgIn\" && \"deADSB.exe\" --input ../ADSB/{nameWithoutExtension}_output.txt  --output ../ADSB/{nameWithoutExtension}_json";
 
-                ProcessStartInfo psi = new ProcessStartInfo(command, arguments);
-                psi.RedirectStandardOutput = true;
-                psi.UseShellExecute = false;
+                ProcessStartInfo psi = new ProcessStartInfo(command, arguments)
+                {
+                    RedirectStandardOutput = true,
+                    RedirectStandardError = true,
+                    UseShellExecute = false,
+                    CreateNoWindow = true
+                };
 
-                Process process = new Process();
-                process.StartInfo = psi;
-                process.Start();
-                await process.WaitForExitAsync(); // 使用非同步的 WaitForExit 方法等待命令執行完畢
-                int exitCode = process.ExitCode;
-                process.Close();
+                using (Process process = new Process())
+                {
+                    process.StartInfo = psi;
+
+                    try
+                    {
+                        process.Start();
+
+                        // Asynchronously read the standard output and error
+                        string output = await process.StandardOutput.ReadToEndAsync();
+                        string error = await process.StandardError.ReadToEndAsync();
+
+                        // Wait for the process to exit
+                        await process.WaitForExitAsync();
+
+                        int exitCode = process.ExitCode;
+
+                        Console.WriteLine($"Exit Code: {exitCode}");
+                        Console.WriteLine($"Output: {output}");
+                        Console.WriteLine($"Error: {error}");
+
+                        // Optionally, check for errors and handle them accordingly
+                        if (exitCode != 0)
+                        {
+                            Console.WriteLine("Process failed.");
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        Console.WriteLine($"Exception: {ex.Message}");
+                    }
+                }
+                // JSON 檔案路徑
+                string JSONfilePath = $"{OutFolderPath}/ADSB/{nameWithoutExtension}_json.json";
+
+                // 讀取 JSON 檔案內容
+                string jsonContent = File.ReadAllText(JSONfilePath);
+
+               
                 break;
         }
     }
